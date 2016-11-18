@@ -52,7 +52,7 @@
 -(void)sketchComplete{
     self.navigationItem.rightBarButtonItem = self.pickTemplateButton;
     [self presentViewController:self.popupVC animated:YES completion:nil];
-    self.mapView.touchDelegate = self;
+    self.mapView.sketchEditor = nil;
     self.bannerView.hidden = YES;
 
 }
@@ -81,8 +81,7 @@
     self.mapView.interactionOptions.magnifierEnabled = YES;
 	
     AGSPortal *portal = [AGSPortal ArcGISOnlineWithLoginRequired:NO];
-    AGSPortalItem *item = [AGSPortalItem portalItemWithPortal:portal itemID:@"429007258c004382a4569f893722ac18"];
-//    AGSPortalItem *item = [AGSPortalItem portalItemWithPortal:portal itemID:@"b31153c71c6c429a8b24c1751a50d3ad"];
+    AGSPortalItem *item = [AGSPortalItem portalItemWithPortal:portal itemID:@"b31153c71c6c429a8b24c1751a50d3ad"];
     self.webmap = [AGSMap mapWithItem:item];
     //designate a delegate to be notified as web map is opened
     self.mapView.map = self.webmap;
@@ -109,38 +108,33 @@
 -(void)geoView:(AGSGeoView *)geoView didTapAtScreenPoint:(CGPoint)screenPoint mapPoint:(AGSPoint *)mapPoint {
     //Show popups for features that were tapped on
     if (self.mapView.callout.hidden) {
+        self.popup = nil;
         __weak __typeof(self) weakSelf = self;
         [self.mapView identifyLayersAtScreenPoint:screenPoint
                                         tolerance:10
                                  returnPopupsOnly:YES
                            maximumResultsPerLayer:1
                                        completion:^(NSArray<AGSIdentifyLayerResult *> * _Nullable identifyResults, NSError * _Nullable error) {
-            NSMutableArray *features = [NSMutableArray array];
+            NSMutableArray *popups = [NSMutableArray array];
             for (AGSIdentifyLayerResult *result in identifyResults) {
-                [features addObjectsFromArray:result.geoElements];
+                [popups addObjectsFromArray:result.popups];
+                for (AGSIdentifyLayerResult *sublayerResults in result.sublayerResults) {
+                    [popups addObjectsFromArray:sublayerResults.popups];
+                }
             }
-            if (features.count > 0) {
-                weakSelf.mapView.callout.title = [((id<AGSGeoElement>)features[0]).attributes objectForKey:@"req_type"];
-                weakSelf.mapView.callout.detail = [((id<AGSGeoElement>)features[0]).attributes objectForKey:@"address"];
-                [weakSelf.mapView.callout showCalloutForFeature:features[0] tapLocation:mapPoint animated:YES];
+                                           
+                                           
+            if (popups.count > 0) {
+                self.popup = popups[0];
+                
+                weakSelf.mapView.callout.title = self.popup.title;
+                [weakSelf.mapView.callout showCalloutAt:mapPoint screenOffset:CGPointZero rotateOffsetWithMap:NO animated:YES];
             }
         }];
     }
     else {  //hide the callout
         [self.mapView.callout dismiss];
     }
-//    
-//    
-//    //if the callout is not shown, show the callout with the coordinates of the tapped location
-//    if (self.mapView.callout.hidden) {
-//        self.mapView.callout.title = @"Location";
-//        self.mapView.callout.detail = [NSString stringWithFormat: @"x: %.2f, y: %.2f", mapPoint.x, mapPoint.y];
-//        self.mapView.callout.accessoryButtonHidden = NO;
-//        [self.mapView.callout showCalloutAt:mapPoint screenOffset:CGPointZero rotateOffsetWithMap:NO animated:YES];
-//    }
-//    else {  //hide the callout
-//        [self.mapView.callout dismiss];
-//    }
 }
 
 #pragma mark - layer/map handler methods
@@ -158,9 +152,6 @@
 }
 
 - (void)mapDidLoad {
-    //Once all the layers in the web map are loaded
-    //we will add a dormant sketch layer on top. We will activate the sketch layer when the time is right.
-    self.sketchEditor = [AGSSketchEditor sketchEditor];
     //register self for receiving notifications from the sketch layer
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(respondToGeomChanged:) name:AGSSketchEditorGeometryDidChangeNotification object:nil];
 }
@@ -192,20 +183,8 @@
 
 - (void)featureTemplatePickerViewController:(FeatureTemplatePickerViewController *)featureTemplatePickerViewController didSelectFeatureTemplate:(AGSFeatureTemplate *)template forTable:(AGSArcGISFeatureTable *)table{
     
-    //set the active feature layer to the one we are going to edit
-//    self.activeFeatureLayer = featureLayer;
-    
     //create a new feature based on the template
     _newFeature = [table createFeatureWithTemplate:template];
-    
-    //Add the new feature to the feature layer's graphic collection
-    //This is important because then the popup view controller will be able to 
-    //find the feature layer associated with the graphic and inspect the field metadata
-    //such as domains, subtypes, data type, length, etc
-    //Also note, if the user cancels before saving the new feature to the server, 
-    //we will manually need to remove this
-    //feature from the feature layer (see implementation for popupsContainer:didCancelEditingGraphicForPopup: below)
-//    [self.activeFeatureLayer addGraphic:_newFeature];
     
     AGSPopup *popup = [AGSPopup popupWithGeoElement:_newFeature popupDefinition:table.featureLayer.popupDefinition];
     
@@ -237,20 +216,7 @@
 
 - (void)didTapAccessoryButtonForCallout:(AGSCallout *)callout {
     
-    AGSFeature* feature = (AGSFeature*)callout.representedObject;
-    //Show popup for the graphic because the user tapped on the callout accessory button
-    AGSPopupDefinition *pud = feature.featureTable.featureLayer.popupDefinition;
-    for (AGSPopupField *field in pud.fields) {
-        NSLog(@"field name = %@; isVisible = %@", field.fieldName, field.isVisible ? @"YES" : @"NO");
-    }
-    for (AGSPopupField *field in self.activeFeatureLayer.popupDefinition.fields) {
-        NSLog(@"self.activeFeatureLayer field name = %@; isVisible = %@", field.fieldName, field.isVisible ? @"YES" : @"NO");
-    }
-//    AGSPopup *popup = [AGSPopup popupWithGeoElement:feature popupDefinition:self.activeFeatureLayer.popupDefinition];
-    
-    AGSPopup *popup = [AGSPopup popupWithGeoElement:feature];
-    
-    self.popupVC = [AGSPopupsViewController popupsViewControllerWithPopups:@[popup] containerStyle:AGSPopupsViewControllerContainerStyleNavigationBar];
+    self.popupVC = [AGSPopupsViewController popupsViewControllerWithPopups:@[self.popup] containerStyle:AGSPopupsViewControllerContainerStyleNavigationBar];
     self.popupVC.delegate = self;
     self.popupVC.modalTransitionStyle =  UIModalTransitionStyleFlipHorizontal;
     //If iPad, use a modal presentation style
@@ -327,6 +293,8 @@
             }
             
             NSLog(@"feature deleted in server");
+            self.mapView.sketchEditor = nil;
+            self.mapView.callout.hidden = YES;
             [self dismissViewControllerAnimated:YES completion:nil];
         }
     }];
@@ -359,6 +327,7 @@
             }
             
             //Dismiss the popups VC. All edits have been applied.
+            self.mapView.sketchEditor = nil;
             [self dismissViewControllerAnimated:YES completion:nil];
         }
         
@@ -372,12 +341,14 @@
 
 -(void)popupsViewControllerDidFinishViewingPopups:(AGSPopupsViewController *)popupsViewController {
     //dismiss the popups view controller
+    self.mapView.sketchEditor = nil;
     [self dismissViewControllerAnimated:YES completion:nil];
     self.popupVC = nil;
 }
 
 -(void)popupsViewController:(AGSPopupsViewController *)popupsViewController didCancelEditingForPopup:(AGSPopup *)popup {
     //dismiss the popups view controller
+    self.mapView.sketchEditor = nil;
     [self dismissViewControllerAnimated:YES completion:nil];
     
     //reset any sketch related changes we made to our main view controller

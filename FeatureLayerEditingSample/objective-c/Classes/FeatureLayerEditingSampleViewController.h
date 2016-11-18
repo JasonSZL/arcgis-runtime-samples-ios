@@ -37,6 +37,7 @@
 @property (nonatomic, strong) IBOutlet AGSMapView *mapView;
 @property (nonatomic, strong) AGSMap* webmap;
 @property (nonatomic, strong) AGSFeatureLayer *activeFeatureLayer;
+@property (nonatomic, strong) AGSPopup *popup;
 @property (nonatomic, strong) AGSPopupsViewController* popupVC;
 @property (nonatomic, strong) AGSSketchEditor* sketchEditor;
 
