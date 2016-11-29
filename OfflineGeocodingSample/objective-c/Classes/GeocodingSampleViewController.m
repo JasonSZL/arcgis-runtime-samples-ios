@@ -117,12 +117,15 @@
     AGSReverseGeocodeParameters* params = [AGSReverseGeocodeParameters reverseGeocodeParameters];
     params.resultAttributeNames = @[@"*"];
     params.outputSpatialReference = self.mapView.spatialReference;
+    
+    __weak __typeof(self) weakSelf = self;
+
     [self.locator reverseGeocodeWithLocation:mapPoint parameters:params completion:^(NSArray<AGSGeocodeResult *> * _Nullable geocodeResults, NSError * _Nullable error) {
         
         if(geocodeResults!=nil){
-            [self processReverseGeocodeResults:geocodeResults];
+            [weakSelf processReverseGeocodeResults:geocodeResults];
         }else if (error!=nil){
-            [self processReverseGeocodeError:error];
+            [weakSelf processReverseGeocodeError:error];
         }
     }];
 
@@ -137,12 +140,14 @@
     params.resultAttributeNames = @[@"*"];
     params.outputSpatialReference = self.mapView.spatialReference;
     
+    __weak __typeof(self) weakSelf = self;
+
     //reverse-geocode new location
     [self.locator reverseGeocodeWithLocation:mapPoint parameters:params completion:^(NSArray<AGSGeocodeResult *> * _Nullable geocodeResults, NSError * _Nullable error) {
         if(geocodeResults!=nil){
-            [self processReverseGeocodeResults:geocodeResults];
+            [weakSelf processReverseGeocodeResults:geocodeResults];
         }else if (error!=nil){
-            [self processReverseGeocodeError:error];
+            [weakSelf processReverseGeocodeError:error];
         }
 
     }];
@@ -156,24 +161,26 @@
 
 - (void) geoView:(AGSGeoView *)geoView didTapAtScreenPoint:(CGPoint)screenPoint mapPoint:(AGSPoint *)mapPoint {
 
+    __weak __typeof(self) weakSelf = self;
+
    [self.mapView identifyGraphicsOverlay:self.graphicsOverlay screenPoint:screenPoint tolerance:22 returnPopupsOnly:NO completion:^(AGSIdentifyGraphicsOverlayResult * _Nonnull identifyResult) {
         
         if(identifyResult.graphics.count>0){
             
             AGSGraphic* tappedGraphic = identifyResult.graphics[0];
             if(tappedGraphic.attributes[@"Match_addr"]){
-                self.mapView.callout.title = tappedGraphic.attributes[@"Match_addr"];
+                weakSelf.mapView.callout.title = tappedGraphic.attributes[@"Match_addr"];
             }else if(tappedGraphic.attributes[@"Street"]){
-                self.mapView.callout.title = tappedGraphic.attributes[@"Street"];
+                weakSelf.mapView.callout.title = tappedGraphic.attributes[@"Street"];
             }
             
-            self.mapView.callout.detail = [ (NSString*)(tappedGraphic.attributes[@"City"]) stringByAppendingFormat:@", %@",  tappedGraphic.attributes[@"ZIP"] ];
-            [self.mapView.callout showCalloutForGraphic:tappedGraphic tapLocation:mapPoint animated:YES ];
+            weakSelf.mapView.callout.detail = [ (NSString*)(tappedGraphic.attributes[@"City"]) stringByAppendingFormat:@", %@",  tappedGraphic.attributes[@"ZIP"] ];
+            [weakSelf.mapView.callout showCalloutForGraphic:tappedGraphic tapLocation:mapPoint animated:YES ];
             
         } else {
             //dismiss the callout
-            if(!self.mapView.callout.hidden)
-                [self.mapView.callout dismiss];
+            if(!weakSelf.mapView.callout.hidden)
+                [weakSelf.mapView.callout dismiss];
         }
         
             
@@ -196,12 +203,14 @@
     params.resultAttributeNames = @[@"*"];
     params.outputSpatialReference = self.mapView.spatialReference;
 
+    __weak __typeof(self) weakSelf = self;
+
     //now request the location from the locator for our address
     [self.locator geocodeWithSearchValues:addresses parameters:params completion:^(NSArray<AGSGeocodeResult *> * _Nullable geocodeResults, NSError * _Nullable error) {
         if(geocodeResults!=nil){
-            [self processGeocodeResults:geocodeResults];
+            [weakSelf processGeocodeResults:geocodeResults];
         }else if (error!=nil){
-            [self processGeocodeError:error];
+            [weakSelf processGeocodeError:error];
         }
 
     }];
@@ -308,13 +317,15 @@
 }
 
 - (void)searchBarResultsListButtonClicked:(UISearchBar *)searchBar{
-    
+
+    __weak __typeof(self) weakSelf = self;
+
     RecentViewController* rvc = [[RecentViewController alloc]initWithItems:self.recentSearches];
     rvc.completionBlock = ^(NSString* item){
         if(item)
-            self.searchBar.text = item;
-        [self dismissViewControllerAnimated:YES completion:nil];
-        [self.searchBar becomeFirstResponder];
+            weakSelf.searchBar.text = item;
+        [weakSelf dismissViewControllerAnimated:YES completion:nil];
+        [weakSelf.searchBar becomeFirstResponder];
     };
     
     
