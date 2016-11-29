@@ -37,13 +37,15 @@
 	NSURL *routeTaskUrl = [NSURL URLWithString:kRouteTaskUrl];
 	self.routeTask = [AGSRouteTask routeTaskWithURL:routeTaskUrl];
     
+    __weak __typeof(self) weakSelf = self;
+
 	// kick off asynchronous method to retrieve default parameters
 	// for the route task
 	[self.routeTask defaultRouteParametersWithCompletion:^(AGSRouteParameters * _Nullable routeParams, NSError * _Nullable error) {
         if (routeParams!=nil){
-            [self processRouteParameters:routeParams];
+            [weakSelf processRouteParameters:routeParams];
         }else if (error!=nil){
-            [self processRouteParametersError:error];
+            [weakSelf processRouteParametersError:error];
         }
     }];
 
@@ -132,15 +134,17 @@
 	// Click Retry to attempt to retrieve the defaults again
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Error" message:@"Failed to retrieve default route parameters" preferredStyle:UIAlertControllerStyleAlert];
     [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
- 
+
+    __weak __typeof(self) weakSelf = self;
+
     // If the user clicks 'Retry' then we should attempt to retrieve the defaults again
     [alert addAction:[UIAlertAction actionWithTitle:@"Retry" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
         
-        [self.routeTask defaultRouteParametersWithCompletion:^(AGSRouteParameters * _Nullable routeParams, NSError * _Nullable error) {
+        [weakSelf.routeTask defaultRouteParametersWithCompletion:^(AGSRouteParameters * _Nullable routeParams, NSError * _Nullable error) {
             if (routeParams!=nil){
-                [self processRouteParameters:routeParams];
+                [weakSelf processRouteParameters:routeParams];
             }else if (error!=nil){
-                [self processRouteParametersError:error];
+                [weakSelf processRouteParametersError:error];
             }
         }];
         
@@ -498,13 +502,14 @@
 	// ensure the graphics are returned in our map's spatial reference
 	self.routeTaskParams.outputSpatialReference = self.mapView.spatialReference;
 	
+    __weak __typeof(self) weakSelf = self;
 		
 	// execute the route task
     [self.routeTask solveRouteWithParameters:self.routeTaskParams completion:^(AGSRouteResult * _Nullable routeResult, NSError * _Nullable error) {
         if(routeResult!=nil){
-            [self processRouteResult:routeResult];
+            [weakSelf processRouteResult:routeResult];
         }else{
-            [self processRouteError:error];
+            [weakSelf processRouteError:error];
         }
     }];
 }
@@ -580,22 +585,25 @@
 #pragma mark AGSGeoViewTouchDelegate
 
 -(void)geoView:(AGSGeoView *)geoView didTouchDownAtScreenPoint:(CGPoint)screenPoint mapPoint:(AGSPoint *)mapPoint completion:(void (^)(BOOL))completion {
+    
+    __weak __typeof(self) weakSelf = self;
+
     [self.mapView identifyGraphicsOverlay:self.stopGraphicsOverlay screenPoint:screenPoint tolerance:22 returnPopupsOnly:NO completion:^(AGSIdentifyGraphicsOverlayResult * _Nonnull identifyResult) {
         
         if (identifyResult!=nil && identifyResult.graphics.count>0) {
             completion(YES);
-            [self showCalloutForGraphic:identifyResult.graphics[0] tapLocation:mapPoint];
+            [weakSelf showCalloutForGraphic:identifyResult.graphics[0] tapLocation:mapPoint];
             
         }else {
             
-            [self.mapView identifyGraphicsOverlay:self.barrierGraphicsOverlay screenPoint:screenPoint tolerance:22 returnPopupsOnly:NO completion:^(AGSIdentifyGraphicsOverlayResult * _Nonnull identifyResult) {
+            [weakSelf.mapView identifyGraphicsOverlay:self.barrierGraphicsOverlay screenPoint:screenPoint tolerance:22 returnPopupsOnly:NO completion:^(AGSIdentifyGraphicsOverlayResult * _Nonnull identifyResult) {
                 
                 if (identifyResult!=nil && identifyResult.graphics.count>0) {
                     completion(YES);
-                    [self showCalloutForGraphic:identifyResult.graphics[0] tapLocation:mapPoint];
+                    [weakSelf showCalloutForGraphic:identifyResult.graphics[0] tapLocation:mapPoint];
                 }else{
                     completion(NO);
-                    [self.mapView.callout dismiss];
+                    [weakSelf.mapView.callout dismiss];
                 }
                 
             }];

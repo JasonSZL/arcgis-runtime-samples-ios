@@ -56,6 +56,8 @@ static NSString *kGeoLocatorURL = @"http://geocode.arcgis.com/arcgis/rest/servic
 
 - (void)geoView:(AGSGeoView *)geoView didTapAtScreenPoint:(CGPoint)screenPoint mapPoint:(AGSPoint *)mapPoint
 {
+        __weak __typeof(self) weakSelf = self;
+
         [self.mapView identifyGraphicsOverlay:self.graphicsOverlay screenPoint:screenPoint tolerance:22 returnPopupsOnly:NO completion:^(AGSIdentifyGraphicsOverlayResult * _Nonnull identifyResult) {
            
             if(identifyResult.graphics.count>0){
@@ -63,15 +65,15 @@ static NSString *kGeoLocatorURL = @"http://geocode.arcgis.com/arcgis/rest/servic
                 //set the text and detail text based on 'Name' and 'Descr' fields in the results
 
                 AGSGraphic* tappedGraphic = identifyResult.graphics[0];
-                self.mapView.callout.title = tappedGraphic.attributes[@"Match_addr"];
-                self.mapView.callout.detail = tappedGraphic.attributes[@"Place_addr"];
+                weakSelf.mapView.callout.title = tappedGraphic.attributes[@"Match_addr"];
+                weakSelf.mapView.callout.detail = tappedGraphic.attributes[@"Place_addr"];
                 
-                [self.mapView.callout showCalloutForGraphic:tappedGraphic tapLocation:nil animated:YES];
+                [weakSelf.mapView.callout showCalloutForGraphic:tappedGraphic tapLocation:nil animated:YES];
                 
             }else{
-                self.mapView.callout.title = @"";
-                self.mapView.callout.detail = @"";
-                [self.mapView.callout dismiss];
+                weakSelf.mapView.callout.title = @"";
+                weakSelf.mapView.callout.detail = @"";
+                [weakSelf.mapView.callout dismiss];
             }
             
         }];
@@ -92,12 +94,15 @@ static NSString *kGeoLocatorURL = @"http://geocode.arcgis.com/arcgis/rest/servic
     AGSGeocodeParameters *parameters = [[AGSGeocodeParameters alloc] init];
     parameters.outputSpatialReference = self.mapView.spatialReference;
     parameters.resultAttributeNames = @[@"*"];
+    
+    __weak __typeof(self) weakSelf = self;
+    
     [self.locator geocodeWithSearchText:self.searchBar.text parameters:parameters completion:^(NSArray<AGSGeocodeResult *> * _Nullable geocodeResults, NSError * _Nullable error) {
         
         if(geocodeResults!=nil){
-            [self processResults:geocodeResults];
+            [weakSelf processResults:geocodeResults];
         }else if (error!=nil){
-            [self processError:error];
+            [weakSelf processError:error];
         }
         
     }];

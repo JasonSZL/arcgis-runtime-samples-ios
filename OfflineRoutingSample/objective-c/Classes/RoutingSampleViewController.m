@@ -60,13 +60,14 @@
 	// Setup the route task
     self.routeTask = [AGSRouteTask routeTaskWithDatabaseName:@"RuntimeSanFrancisco" networkName:@"Streets_ND"];
 	
+    __weak __typeof(self) weakSelf = self;
 	// kick off asynchronous method to retrieve default parameters
 	// for the route task
     [self.routeTask defaultRouteParametersWithCompletion:^(AGSRouteParameters * _Nullable routeParams, NSError * _Nullable error) {
         if (routeParams!=nil){
-            [self processRouteParameters:routeParams];
+            [weakSelf processRouteParameters:routeParams];
         }else if (error!=nil){
-            [self processRouteParametersError:error];
+            [weakSelf processRouteParametersError:error];
         }
     }];
 
@@ -322,12 +323,14 @@
         // update our banner
         [self updateDirectionsLabel:@"Routing..."];
 		[self.routeTaskParams setStops:stops];
+
+        __weak __typeof(self) weakSelf = self;
         // execute the route task
         [self.routeTask solveRouteWithParameters:self.routeTaskParams completion:^(AGSRouteResult * _Nullable routeResult, NSError * _Nullable error) {
             if(routeResult!=nil){
-                [self processRouteResult:routeResult];
+                [weakSelf processRouteResult:routeResult];
             }else{
-                [self processRouteError:error];
+                [weakSelf processRouteError:error];
             }
         }];
 	}
